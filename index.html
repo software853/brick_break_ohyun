@@ -17,6 +17,12 @@
   </head>
   <body>
     <canvas id="myCanvas" width="480" height="320"></canvas>
+    <div>Teachable Machine Image Model</div>
+    <button type="button" onclick="init()">Start</button>
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script>
       // JavaScript 코드가 여기에 들어갈 것입니다.
@@ -154,9 +160,9 @@
                 if (x > paddleX && x < paddleX + paddleWidth) {
             dy = -dy;
         } else {
-            alert("GAME OVER");
-            document.location.reload();
-            clearInterval(interval);
+            //alert("GAME OVER");
+            //document.location.reload();
+            //clearInterval(interval);
         }
        
         }      
@@ -176,6 +182,65 @@
         
 
         const interval = setInterval(draw, 10);
+
+                
+        const URL = "./model/";
+    
+        let model, webcam, labelContainer, maxPredictions;
+    
+      
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+    
+           
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+    
+            
+            const flip = true;
+            webcam = new tmImage.Webcam(200, 200, flip); 
+            await webcam.setup(); 
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+    
+         
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) { // and class labels
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+    
+        async function loop() {
+            webcam.update(); // update the webcam frame
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+    
+        // run the webcam image through the image model
+        async function predict() {
+            // predict can take in an image, video or canvas html element
+            const prediction = await model.predict(webcam.canvas);
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+            const sortedPrediction = prediction.sort((x,y)=>y.probability-x.probability);
+            const result=sortedPrediction[0].className;
+            if (result==="left"){
+              leftPressed = true;
+              rightPressed = false;
+            }
+            else if(result==="right"){
+              leftPressed = false;
+              rightPressed = true;
+            }else{
+              leftPressed = false;
+              rightPressed = false;
+            }
+        }
     </script>
   </body>
 </html>
